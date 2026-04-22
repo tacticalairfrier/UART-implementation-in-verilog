@@ -53,7 +53,7 @@ initial begin
     $monitor($time,"the value of input was %d while the value of output is %d", data_tx, data_rx);
     //setting data to some random variable at time =0 
     data_tx = $urandom_range(0,255);
-    #11000000
+    #10000000
     $finish;
 end
 endmodule
