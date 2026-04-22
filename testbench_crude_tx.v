@@ -36,7 +36,7 @@ initial begin
     $dumpfile("sim.vcd");
     $dumpvars(0,testbench);
     TX_enable_tb = 1'b1;
-    data_in_tb = 8'b11111111;
+    data_in_tb = 8'b01000011;
     $monitor($time, "at this time the value of out register is %b", data_out_tb);
     #100000;
     TX_enable_tb = 1'b0;
