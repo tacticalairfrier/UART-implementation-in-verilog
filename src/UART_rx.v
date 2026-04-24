@@ -3,7 +3,7 @@
 `define TRUE 1'b1
 `define FALSE 1'b0
 
-module UART_rx #(parameter CLK_FREQ = 50_000_000, BAUD_RATE = 115200)(
+module UART_rx #(parameter CLK_FREQ = 100_000_000, BAUD_RATE = 115200)(
     input wire data_in, clkin, reset, 
     output reg [7:0] data_out,
     //defining the flags here
@@ -16,7 +16,7 @@ localparam IDLE = 3'd0, STOP = 3'd1, START = 3'd2, DATA = 3'd3, PARITY = 3'd4, E
 localparam DATCOUNT = 3'd7;
 localparam SAMPLEX8 = 4'd7, SAMPLEX16 = 4'd15;
 //declaring the register variables for the state and next state logic
-reg [7:0] shiftreg;
+reg [7:0] shiftreg, shiftregnext;
 reg [4:0] samplex16_counter; 
 reg [3:0] sample_counter, sample_counter_next, data_counter, data_counter_next; 
 reg [2:0] state, nextstate; 
@@ -30,6 +30,11 @@ always@(posedge clkin, negedge reset)begin
     if(!reset)begin
         samplex16_tick <= 1'b0;
         samplex16_counter <= BAUD_OVERSAMPLE;
+        state <= IDLE;
+        rx <= `FALSE;   // RX is false upon reset;
+        data_counter <= DATCOUNT;
+        sample_counter <= 3'b0;
+        shiftreg <= 8'b0;
     end
     else if(samplex16_counter>0)begin
         samplex16_counter <= samplex16_counter-1;
@@ -38,28 +43,6 @@ always@(posedge clkin, negedge reset)begin
     else begin
         samplex16_counter <= BAUD_OVERSAMPLE; 
         samplex16_tick <= 1'b1;
-    end
-end
-//code for the state nextstate transistion
-always@(posedge clkin, negedge reset)begin
-    //reset logic for the fsm
-    if(!reset) begin 
-        state <= IDLE;
-        data_out <= 8'd0;
-        rx_done <= `FALSE;
-        error_flag <= `FALSE;
-        parity_err <= `FALSE;
-        rx <= `FALSE;   // RX is false upon reset;
-        edgedetected <= `FALSE;
-        data_counter <= DATCOUNT;
-        sample_counter <= 3'b0;
-        shiftreg <= 8'b0;
-        //at reset everything goes straightto false
-    end
-    //Control cases for sampling the data
-    else if(samplex16_tick)begin
-        //checking for a falling edge by first inputing the input 
-        //edges are detected correctly using this logic
         rx <= data_in;  //here rx recieves the value of the data input 
         rx_prev <= rx;  //here rx_prev recieves the older value of the inputted data   
         case(state)
@@ -80,6 +63,7 @@ always@(posedge clkin, negedge reset)begin
                 sample_counter <= sample_counter_next;
                 //machine counts down to zero in the data counter
                 data_counter <= data_counter_next;
+                shiftreg <= shiftregnext;
             end
             PARITY:begin 
                 state <= nextstate;
@@ -91,9 +75,10 @@ always@(posedge clkin, negedge reset)begin
             end
             ERROR_RX: state <= nextstate;
         endcase
-    //every operation will be on a sample tick
+
     end
 end
+//code for the state nextstate transistion
 // end
 //deciding the nextstate logic here and the output control
 always@(*)begin
@@ -139,16 +124,17 @@ always@(*)begin
         //counter decrement condition
         if(sample_counter>0)sample_counter_next = sample_counter-1;
         else begin
+            shiftregnext = {rx, shiftreg[7:1]};
             sample_counter_next = SAMPLEX16;
             if(data_counter>0) begin
                 nextstate = DATA;
                 data_counter_next = data_counter-1;
                 //datcount-data_counter because the encoding was big endian on the rx side
                 //and we need output in little endian style
-                shiftreg[DATCOUNT-data_counter] = rx;
+//                shiftreg[DATCOUNT-data_counter] = rx;
             end
             else begin
-                shiftreg[DATCOUNT-data_counter] = rx;
+//                shiftreg[DATCOUNT-data_counter] = rx;
                 nextstate = PARITY;
                 data_counter_next = DATCOUNT;
             end

@@ -3,7 +3,7 @@
 `define TRUE 1'b1
 `define FALSE 1'b0
 
-module UART_tx #(parameter CLK_FREQ = 50_000_000, BAUD_RATE = 115200)(
+module UART_tx #(parameter CLK_FREQ = 100_000_000, BAUD_RATE = 115200)(
     input wire [7:0] data_in,
     input wire clkin, reset, TX_enable,
     output reg data_out
@@ -28,6 +28,8 @@ always@(posedge clkin, negedge reset)begin
     if(!reset)begin
         count_tick <= BAUD_PERIOD;
         baud_tick <= 1'b0;
+        state <= IDLE;
+        datcount <= DATCOUNT;
     end
     else if(count_tick>1)begin
         count_tick <= count_tick-1;
@@ -36,42 +38,33 @@ always@(posedge clkin, negedge reset)begin
     else begin 
         count_tick <= BAUD_PERIOD;
         baud_tick <= 1'b1;
+        case(state)
+        //idle just skips to the next state and outputs 1 in data_out
+        IDLE: state <= nextstate; 
+        //start param signals the start of the data transfer to the rx side
+        START: begin 
+            state <= nextstate;
+            shiftreg <= shiftregnext;
+            parity_bit <= ^data_in;
+        end
+        // The data transfer part of the code, uses a shift register to control the output
+        DATA:begin
+            shiftreg <= shiftregnext;
+            datcount <= datcount-1;
+            state <= nextstate;
+        end
+        PARITY:begin
+            //shiftregnext stays the same as out is controlled by a separate reg
+            shiftreg <= shiftregnext;
+            //resetting the datcount when the parity condition arrives
+            datcount <= DATCOUNT;
+            state <= nextstate;
+        end
+        STOP: state <= nextstate;  //stop condition sets the output bit to 1
+        endcase
     end
 end
 //state driver some parts of this can be optimised
-always@(posedge clkin, negedge reset)begin
-    //reset logic
-    if(!reset) begin 
-        state <= IDLE;
-        data_out <= 1'b1;
-        datcount <= DATCOUNT;
-    end
-    else if(baud_tick) begin
-    case(state)
-    //idle just skips to the next state and outputs 1 in data_out
-    IDLE: state <= nextstate; 
-    //start param signals the start of the data transfer to the rx side
-    START: begin 
-        state <= nextstate;
-        shiftreg <= shiftregnext;
-    end
-    // The data transfer part of the code, uses a shift register to control the output
-    DATA:begin
-        shiftreg <= shiftregnext;
-        datcount <= datcount-1;
-        state <= nextstate;
-    end
-    PARITY:begin
-        //shiftregnext stays the same as out is controlled by a separate reg
-        shiftreg <= shiftregnext;
-        //resetting the datcount when the parity condition arrives
-        datcount <= DATCOUNT;
-        state <= nextstate;
-    end
-    STOP: state <= nextstate;  //stop condition sets the output bit to 1
-    endcase
-    end
-end
 //next state logic for uart tx
 // NSL code blocks need a lot of optimization
 always@(*)begin
@@ -119,13 +112,11 @@ always@(*)begin
     //making the right shift register
     //prevented latch inference
     shiftregnext = shiftreg;
+    parity_bit = `FALSE;
     case(state)
     //adding the parity calculation right here in the start block
-    START: begin 
-        shiftregnext = data_in;
-        parity_bit = ^data_in;
-    end
-    DATA: shiftregnext = shiftreg>>1;
+    START: shiftregnext = data_in;
+    DATA: shiftregnext = {`FALSE, shiftreg[7:1]};
     //figure out the shiftreg value here or is it needed at all
     PARITY: shiftregnext = shiftreg;
     endcase
@@ -134,11 +125,11 @@ end
 always@(*)begin 
     case(state)
     //the data reg changes right at the instant of the baud tick
-    IDLE: data_out = 1'b1;
-    START: data_out = 1'b0;
+    IDLE: data_out = `TRUE;
+    START: data_out = `FALSE;
     DATA: data_out = shiftreg[0];
     PARITY: data_out = parity_bit;
-    STOP: data_out = 1'b1;
+    STOP: data_out = `TRUE;
     endcase
 end
 endmodule
