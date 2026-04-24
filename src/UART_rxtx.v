@@ -1,37 +1,31 @@
 `timescale 1ns/1ps
 `default_nettype none
-`define TRUE 1'b1
-`define FALSE 1'b0
 
-module combinedRXTX(
-    input wire rx, clkgen, reset, 
-    output wire tx, pari
+module Combined_RXTX(
+    input wire rx, clkgen, reset, tx_enable, 
+    input wire [7:0] data_tx,
+    output wire tx, parity_err, error_flag, rx_done,
+    output wire [7:0] data_rx
 );
-//reg for across the bench
-//uart tx, rx 
-// //reg data types
-// reg [7:0] data_tx;
-// reg TX_enable;
-// //wire data types here
-// wire[7:0] data_rx;
-// wire data_line;
-// wire error_flag_tb, rx_done_tb, parity_err_tb;
+//using this module to :-
+//1.combine the rxtx operation into a single module
+//2.handle inputs and outputs in hopefully a more graceful way
 //uart rx side
-UART_rx DUT0 (
+UART_rx M_RX_0 (
     .clkin(clkgen),
     .reset(reset),
-    .data_in(data_line),
+    .data_in(rx),
     .data_out(data_rx),
-    .error_flag(error_flag_tb),
-    .rx_done(rx_done_tb),
-    .parity_err(parity_err_tb)
+    .error_flag(error_flag),
+    .rx_done(rx_done),
+    .parity_err(parity_err)
 );
 //uart tx side
-UART_tx DUT1 (
+UART_tx M_TX_0 (
     .clkin(clkgen),
     .reset(reset),
     .data_in(data_tx),
-    .data_out(data_line),
-    .TX_enable(TX_enable)
+    .data_out(tx),
+    .TX_enable(tx_enable)
 );
 endmodule 
