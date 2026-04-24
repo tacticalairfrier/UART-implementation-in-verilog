@@ -105,6 +105,7 @@ always@(*)begin
         STOP: nextstate = IDLE;
         endcase
     end
+    default: nextstate = IDLE;
     endcase
 end
 //driving the states of the state register
@@ -112,13 +113,13 @@ always@(*)begin
     //making the right shift register
     //prevented latch inference
     shiftregnext = shiftreg;
-    parity_bit = `FALSE;
     case(state)
     //adding the parity calculation right here in the start block
     START: shiftregnext = data_in;
     DATA: shiftregnext = {`FALSE, shiftreg[7:1]};
     //figure out the shiftreg value here or is it needed at all
     PARITY: shiftregnext = shiftreg;
+    default: shiftregnext = shiftreg;
     endcase
 end
 //always block added to check if the output still lags behind one tick when simualted
@@ -130,6 +131,7 @@ always@(*)begin
     DATA: data_out = shiftreg[0];
     PARITY: data_out = parity_bit;
     STOP: data_out = `TRUE;
+    default: data_out = `TRUE;
     endcase
 end
 endmodule

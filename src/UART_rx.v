@@ -20,7 +20,7 @@ reg [7:0] shiftreg, shiftregnext;
 reg [4:0] samplex16_counter; 
 reg [3:0] sample_counter, sample_counter_next, data_counter, data_counter_next; 
 reg [2:0] state, nextstate; 
-reg samplex16_tick, rx, rx_prev, edgedetected;
+reg  rx, rx_prev, edgedetected;
 //determined by fsm are sample counter data counter and state register
 //using defining rx as a parameter in this finite state machine
 //edge detected will be true if and only if previous state was idle and a transition has happened
@@ -28,26 +28,22 @@ reg samplex16_tick, rx, rx_prev, edgedetected;
 //this part works as intended
 always@(posedge clkin, negedge reset)begin 
     if(!reset)begin
-        samplex16_tick <= 1'b0;
         samplex16_counter <= BAUD_OVERSAMPLE;
         state <= IDLE;
         rx <= `FALSE;   // RX is false upon reset;
+        rx_prev = `FALSE;
         data_counter <= DATCOUNT;
-        sample_counter <= 3'b0;
+        sample_counter <= SAMPLEX8;
         shiftreg <= 8'b0;
     end
-    else if(samplex16_counter>0)begin
-        samplex16_counter <= samplex16_counter-1;
-        samplex16_tick <= 1'b0;
-    end
+    else if(samplex16_counter>0) samplex16_counter <= samplex16_counter-1;
     else begin
         samplex16_counter <= BAUD_OVERSAMPLE; 
-        samplex16_tick <= 1'b1;
         rx <= data_in;  //here rx recieves the value of the data input 
         rx_prev <= rx;  //here rx_prev recieves the older value of the inputted data   
+        sample_counter <= sample_counter_next;
         case(state)
             IDLE:begin
-                sample_counter <= sample_counter_next;
                 //the machine enters the start condtion after an edge is detected
                 //OPTIMISE THIS 
                 state <= nextstate;
@@ -60,22 +56,20 @@ always@(posedge clkin, negedge reset)begin
             DATA:begin
                 //machine is in data mode for 8 iterations
                 state <= nextstate;
-                sample_counter <= sample_counter_next;
                 //machine counts down to zero in the data counter
                 data_counter <= data_counter_next;
                 shiftreg <= shiftregnext;
             end
             PARITY:begin 
                 state <= nextstate;
-                sample_counter <= sample_counter_next;
             end
             STOP:begin
                 state <= nextstate;
-                sample_counter <= sample_counter_next;
             end
-            ERROR_RX: state <= nextstate;
+            ERROR_RX:begin
+             state <= nextstate;
+             end
         endcase
-
     end
 end
 //code for the state nextstate transistion
@@ -88,10 +82,13 @@ always@(*)begin
     edgedetected = rx_prev&~rx;
     //preventing latch inferrence for 3 variables
     nextstate = state;
+    shiftregnext = shiftreg;
     sample_counter_next = sample_counter;
     data_counter_next = data_counter;
+    parity_err = `FALSE;
     error_flag = `FALSE;
     rx_done = `FALSE;
+    data_out = 8'b0;
     case(state)
     IDLE: begin
         if(edgedetected)begin
@@ -117,7 +114,7 @@ always@(*)begin
         else begin
             //default condition for this
             nextstate = IDLE;
-            sample_counter = `FALSE;
+            sample_counter_next = 4'b0;
         end
     end
     DATA:begin
@@ -131,10 +128,8 @@ always@(*)begin
                 data_counter_next = data_counter-1;
                 //datcount-data_counter because the encoding was big endian on the rx side
                 //and we need output in little endian style
-//                shiftreg[DATCOUNT-data_counter] = rx;
             end
             else begin
-//                shiftreg[DATCOUNT-data_counter] = rx;
                 nextstate = PARITY;
                 data_counter_next = DATCOUNT;
             end
@@ -160,6 +155,7 @@ always@(*)begin
                 //nextstate is idle and since idle directly puts you to start its not problem
                 nextstate = IDLE;
                 data_out = shiftreg;
+//                data_out = shiftreg;
                 rx_done = `TRUE;
             end 
         end
