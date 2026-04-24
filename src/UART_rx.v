@@ -33,6 +33,7 @@ always@(posedge clkin, negedge reset)begin
         rx <= `FALSE;   // RX is false upon reset;
         rx_prev = `FALSE;
         data_counter <= DATCOUNT;
+        data_out <= 8'b0;
         sample_counter <= SAMPLEX8;
         shiftreg <= 8'b0;
     end
@@ -70,6 +71,7 @@ always@(posedge clkin, negedge reset)begin
              state <= nextstate;
              end
         endcase
+        if(rx_done) data_out <= shiftreg;
     end
 end
 //code for the state nextstate transistion
@@ -80,7 +82,7 @@ always@(*)begin
     //it will be considered in idle and stop conditions and will be disregarded otherwise
     //we immediately get to know what the state of the edge is in order to switch the states
     edgedetected = rx_prev&~rx;
-    //preventing latch inferrence for 3 variables
+    //preventing latch inferrence for 7 variables
     nextstate = state;
     shiftregnext = shiftreg;
     sample_counter_next = sample_counter;
@@ -88,7 +90,6 @@ always@(*)begin
     parity_err = `FALSE;
     error_flag = `FALSE;
     rx_done = `FALSE;
-    data_out = 8'b0;
     case(state)
     IDLE: begin
         if(edgedetected)begin
@@ -154,8 +155,6 @@ always@(*)begin
             else begin
                 //nextstate is idle and since idle directly puts you to start its not problem
                 nextstate = IDLE;
-                data_out = shiftreg;
-//                data_out = shiftreg;
                 rx_done = `TRUE;
             end 
         end
