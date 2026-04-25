@@ -1,6 +1,6 @@
 # UART — Verilog Implementation
 
-A fully parameterized UART transceiver implemented in Verilog, supporting 8E1 framing (8 data bits, even parity, 1 stop bit) with a loopback testbench. Designed and verified on a Basys 3 (Artix-7) at 50 MHz.
+A fully parameterized UART transceiver implemented in Verilog, supporting 8E1 framing (8 data bits, even parity, 1 stop bit) with a loopback testbench. Designed and verified on a Basys 3 (Artix-7) at 100 MHz.
 
 ---
 
@@ -58,7 +58,7 @@ Five-state Moore FSM: `IDLE → START → DATA → PARITY → STOP` with an `ERR
 
 | Parameter | Default | Description |
 |---|---|---|
-| `CLK_FREQ` | `50_000_000` | System clock frequency in Hz |
+| `CLK_FREQ` | `100_000_000` | System clock frequency in Hz |
 | `BAUD_RATE` | `115200` | Target baud rate |
 
 Derived localparams:
@@ -92,6 +92,10 @@ src/
 test/
   testbench_rx.v  — Loopback testbench (TX → RX)
   testbench_tx.v  — Standalone TX testbench
+images/
+  schematic_netlist.pdf  -Generated Netlist Schematic
+  schematic_synth.pdf  -Generated Netlist Schematic for synthesyzed design
+  schematic_implementation.pdf  -Generated schematic for implemented design
 ```
 
 ---
