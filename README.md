@@ -96,6 +96,10 @@ images/
   schematic_netlist.pdf  -Generated Netlist Schematic
   schematic_synth.pdf  -Generated Netlist Schematic for synthesyzed design
   schematic_implementation.pdf  -Generated schematic for implemented design
+constraints/
+  constraints_uart.xdc -Constraint file wired up for a basys3
+synth/
+  netlist.v -Gate-Level netlist generated using yosys
 ```
 
 ---
