@@ -37,7 +37,7 @@ always@(posedge clkin, negedge reset)begin
         sample_counter <= SAMPLEX8;
         shiftreg <= 8'b0;
     end
-    else if(samplex16_counter>0) samplex16_counter <= samplex16_counter-1;
+    else if(samplex16_counter>1) samplex16_counter <= samplex16_counter-1;
     else begin
         samplex16_counter <= BAUD_OVERSAMPLE; 
         rx <= data_in;  //here rx recieves the value of the data input 
