@@ -31,7 +31,7 @@ always@(posedge clkin, negedge reset)begin
         samplex16_counter <= BAUD_OVERSAMPLE;
         state <= IDLE;
         rx <= `FALSE;   // RX is false upon reset;
-        rx_prev = `FALSE;
+        rx_prev <= `FALSE;
         data_counter <= DATCOUNT;
         data_out <= 8'b0;
         sample_counter <= SAMPLEX8;
