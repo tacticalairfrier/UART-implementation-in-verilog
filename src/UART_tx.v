@@ -87,7 +87,7 @@ always@(*)begin
         //at stop the ideal next state is idle
         PARITY:nextstate = STOP;
         //error here as nextstate should not be idle, need to test it
-        STOP: nextstate = START;
+        STOP: nextstate = IDLE;
         endcase
     end
     `FALSE: begin 
